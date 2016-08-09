@@ -127,7 +127,7 @@ namespace ts {
 
     // This is the globally available native Map class. It's unrelated to the ts.Map type.
     declare const Map: (StringMapConstructor & NumberMapConstructor) | undefined;
-    export const StringMap: StringMapConstructor = Map ? Map : ShimStringMap;
+    export const StringMap: StringMapConstructor = ShimStringMap;//Map ? Map : ShimStringMap;
     export const NumberMap: NumberMapConstructor = Map ? Map : ShimNumberMap;
 
     /** Number of (key, value) pairs in a map. */
@@ -163,6 +163,23 @@ namespace ts {
         else {
             return (<ShimStringMap<V>>map).find(fn);
         }
+    }
+
+    //todo: rename stuff
+    export function sortInNodeOrder<T>(values: T[], toString: (t: T) => string): T[] {
+        const integer: T[] = [];
+        const nonInteger: T[] = [];
+        for (const value of values) {
+            const string = toString(value);
+            if (!isNaN(parseInt(string, 10))) {
+                integer.push(value);
+            }
+            else {
+                nonInteger.push(value);
+            }
+        }
+        integer.sort((a, b) => toString(a).localeCompare(toString(b)));
+        return integer.concat(nonInteger);
     }
 
     /** Iterate over every key. */
@@ -217,12 +234,12 @@ namespace ts {
         }
     }
 
-    /** True iff the predicate is true for some entry in the map. */
+    /** True if the predicate is true for some entry in the map. */
     export function someInStringMap<V>(map: StringMap<V>, predicate: (value: V, key: string) => boolean): boolean {
         return !!findInStringMap(map, predicate);
     }
 
-    /** True iff the predicate is true for every entry in the map. */
+    /** True if the predicate is true for every entry in the map. */
     export function allInStringMap<V>(map: StringMap<V>, predicate: (value: V, key: string) => boolean): boolean {
         return !findInStringMap(map, (value, key) => !predicate(value, key));
     }
@@ -255,7 +272,7 @@ namespace ts {
     }
 
     /** Creates a map with the given keys and values for each entry in `inputs`. */
-    export function createStringMapFromArray<A, K, V>(inputs: A[], getKey: (element: A) => string, getValue: (element: A) => V): StringMap<V> {
+    export function createStringMapFromArray<A, V>(inputs: A[], getKey: (element: A) => string, getValue: (element: A) => V): StringMap<V> {
         const result = new StringMap<V>();
         for (const input of inputs) {
             result.set(getKey(input), getValue(input));
@@ -300,8 +317,8 @@ namespace ts {
         });
     }
 
-    /** Map of a single entry. */
-    export function singletonMap<V>(key: string, value: V): StringMap<V> {
+    /** StringMap of a single entry. */
+    export function createStringMap<V>(key: string, value: V): StringMap<V> {
         return new StringMap([[key, value]]);
     }
 }
@@ -359,7 +376,7 @@ namespace ts {
     export const SSet: SSetConstructor = Set ? Set : ShimSSet;
 
     /** False iff there are any values in the set. */
-    export function setIsEmpty(set: SSet): boolean {
+    export function isSetEmpty(set: SSet): boolean {
         if (set instanceof Set) {
             return !(<any>set).size;
         }

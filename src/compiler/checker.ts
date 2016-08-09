@@ -342,7 +342,7 @@ namespace ts {
             ResolvedReturnType
         }
 
-        const builtinGlobals: SymbolTable = singletonMap(undefinedSymbol.name, undefinedSymbol);
+        const builtinGlobals: SymbolTable = createStringMap(undefinedSymbol.name, undefinedSymbol);
 
         initializeTypeChecker();
 
@@ -1582,6 +1582,9 @@ namespace ts {
 
         function getNamedMembers(members: SymbolTable): Symbol[] {
             let result: Symbol[];
+            //TODO: foreachInOrder
+            //Only need the guaranteed order when writing out types...
+            //forEachInInsertionOrder(members, (symbol, id) => {
             members.forEach((symbol, id) => {
                 if (!isReservedMemberName(id) && symbolIsValue(symbol)) {
                     (result || (result = [])).push(symbol);
@@ -1910,6 +1913,7 @@ namespace ts {
             return result;
         }
 
+        //this is the one!
         function typeToString(type: Type, enclosingDeclaration?: Node, flags?: TypeFormatFlags): string {
             const writer = getSingleLineStringWriter();
             getSymbolDisplayBuilder().buildTypeDisplay(type, writer, enclosingDeclaration, flags);
@@ -2119,6 +2123,7 @@ namespace ts {
                 return appendParentTypeArgumentsAndSymbolName(symbol);
             }
 
+            //here!
             function buildTypeDisplay(type: Type, writer: SymbolWriter, enclosingDeclaration?: Node, globalFlags?: TypeFormatFlags, symbolStack?: Symbol[]) {
                 const globalFlagsToPass = globalFlags & TypeFormatFlags.WriteOwnNameForAnyLike;
                 let inObjectTypeLiteral = false;
@@ -2423,7 +2428,8 @@ namespace ts {
                     }
                     writeIndexSignature(resolved.stringIndexInfo, SyntaxKind.StringKeyword);
                     writeIndexSignature(resolved.numberIndexInfo, SyntaxKind.NumberKeyword);
-                    for (const p of resolved.properties) {
+                    const sortedProperties = sortInNodeOrder(resolved.properties, p => p.name);
+                    for (const p of sortedProperties) { //right here, the iteration order matters
                         const t = getTypeOfSymbol(p);
                         if (p.flags & (SymbolFlags.Function | SymbolFlags.Method) && !getPropertiesOfObjectType(t).length) {
                             const signatures = getSignaturesOfType(t, SignatureKind.Call);
@@ -3711,7 +3717,7 @@ namespace ts {
                     type.typeParameters = concatenate(outerTypeParameters, localTypeParameters);
                     type.outerTypeParameters = outerTypeParameters;
                     type.localTypeParameters = localTypeParameters;
-                    (<GenericType>type).instantiations = singletonMap(getTypeListId(type.typeParameters), <GenericType>type);
+                    (<GenericType>type).instantiations = createStringMap(getTypeListId(type.typeParameters), <GenericType>type);
                     (<GenericType>type).target = <GenericType>type;
                     (<GenericType>type).typeArguments = type.typeParameters;
                     type.thisType = <TypeParameter>createType(TypeFlags.TypeParameter | TypeFlags.ThisType);
@@ -3752,7 +3758,7 @@ namespace ts {
                     if (typeParameters) {
                         // Initialize the instantiation cache for generic type aliases. The declared type corresponds to
                         // an instantiation of the type alias with the type parameters supplied as type arguments.
-                        links.instantiations = singletonMap(getTypeListId(links.typeParameters), type);
+                        links.instantiations = createStringMap(getTypeListId(links.typeParameters), type);
                     }
                 }
                 else {
@@ -6563,7 +6569,7 @@ namespace ts {
                 }
                 sourceStack[depth] = source;
                 targetStack[depth] = target;
-                maybeStack[depth] = singletonMap(id, RelationComparisonResult.Succeeded);
+                maybeStack[depth] = createStringMap(id, RelationComparisonResult.Succeeded);
                 depth++;
                 const saveExpandingFlags = expandingFlags;
                 if (!(expandingFlags & 1) && isDeeplyNestedGeneric(source, sourceStack, depth)) expandingFlags |= 1;
